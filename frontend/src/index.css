@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Syne:wght@500;700;800&display=swap');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  min-height: 100%;
+  background-color: #ECECE8;
+  color: #121212;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 
+ * Persistent Global Noise Grain Overlay
+ * Renders the subtle paper/editorial film grain across all pages without intercepting clicks.
+ */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 99999;
+  opacity: 0.055;
+  background-image: url('/textures/noise.png');
+  background-repeat: repeat;
+  background-size: 200px 200px;
+  mix-blend-mode: multiply;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #ECECE8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #B8B8B0;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #888880;
+}
+
+/* Smooth link reset */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Editorial selection */
+::selection {
+  background: #121212;
+  color: #FFFFFF;
+}
+
+/* Image zoom utility */
+.zoom-image-container {
+  overflow: hidden;
+}
+
+.zoom-image-container img {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.zoom-image-container:hover img {
+  transform: scale(1.04);
+}
