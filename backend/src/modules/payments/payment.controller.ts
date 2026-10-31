@@ -7,13 +7,15 @@ import {
 import { env } from '../../config/env';
 import { logger } from '../../config/logger';
 import { razorpayClient } from '../../config/razorpay';
-import { BadRequestError, NotFoundError } from '../../utils/errors';
+import { BadRequestError, ForbiddenError, NotFoundError } from '../../utils/errors';
 import { sendResponse } from '../../utils/response';
 import { logAuditEvent } from '../audit/audit.model';
 import { CheckoutService } from '../checkout/checkout.service';
 import { Coupon, CouponRedemption } from '../coupons/coupon.model';
 import { Order } from '../orders/order.model';
 import { Payment } from './payment.model';
+import { User } from '../users/user.model';
+import { sendOrderConfirmationEmail } from '../../utils/mailer';
 
 export const verifyRazorpayPayment = async (
   req: Request,
@@ -32,6 +34,11 @@ export const verifyRazorpayPayment = async (
       throw new NotFoundError('Order not found');
     }
 
+    // Ownership: only the order's customer can verify payment
+    if (order.user.toString() !== req.user!._id.toString()) {
+      throw new ForbiddenError('You are not authorized to verify this payment');
+    }
+
     // If order already paid, return idempotent response
     if (order.paymentStatus === PaymentStatus.PAID) {
       return sendResponse({
@@ -39,6 +46,12 @@ export const verifyRazorpayPayment = async (
         message: 'Payment already verified and captured',
         data: order,
       });
+    }
+
+    // Cross-reference: submitted razorpayOrderId must match stored Payment record
+    const storedPayment = await Payment.findOne({ orderId: order._id });
+    if (!storedPayment || storedPayment.providerOrderId !== razorpayOrderId) {
+      throw new BadRequestError('Razorpay order ID does not match the payment record for this order');
     }
 
     // Cryptographic signature verification
@@ -119,6 +132,15 @@ export const verifyRazorpayPayment = async (
       }
     }
 
+    // Dispatch Order Confirmation Email to customer in background
+    User.findById(order.user)
+      .then((customerUser) => {
+        if (customerUser) {
+          sendOrderConfirmationEmail(customerUser.email, customerUser.name, order).catch(() => {});
+        }
+      })
+      .catch(() => {});
+
     return sendResponse({
       res,
       message: 'Payment verified successfully! Order confirmed.',
@@ -188,6 +210,15 @@ export const handleRazorpayWebhook = async (
             order.orderNumber,
             order.user
           );
+
+          // Dispatch Order Confirmation Email to customer
+          User.findById(order.user)
+            .then((customerUser) => {
+              if (customerUser) {
+                sendOrderConfirmationEmail(customerUser.email, customerUser.name, order).catch(() => {});
+              }
+            })
+            .catch(() => {});
         }
       }
     } else if (event === 'payment.failed') {

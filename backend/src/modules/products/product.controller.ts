@@ -28,11 +28,25 @@ export const listProducts = async (req: Request, res: Response, next: NextFuncti
       query.$text = { $search: search };
     }
 
-    // Category filter by slug
+    // Category filter by slug or name (supports both parent categories and subcategories)
     if (categorySlug && categorySlug !== 'all') {
-      const category = await Category.findOne({ slug: categorySlug });
+      const category = await Category.findOne({
+        $or: [
+          { slug: categorySlug.toLowerCase() },
+          { name: { $regex: new RegExp(`^${categorySlug}$`, 'i') } },
+        ],
+      });
       if (category) {
-        query.category = category._id;
+        if (!category.parentCategory) {
+          const subCats = await Category.find({ parentCategory: category._id });
+          const subCatIds = subCats.map((s) => s._id);
+          query.$or = [
+            { category: category._id },
+            { subcategory: { $in: subCatIds } },
+          ];
+        } else {
+          query.$or = [{ subcategory: category._id }, { category: category._id }];
+        }
       }
     }
 
@@ -73,7 +87,8 @@ export const listProducts = async (req: Request, res: Response, next: NextFuncti
 
     const total = await Product.countDocuments(query);
     const products = await Product.find(query)
-      .populate('category', 'name slug')
+      .populate('category', 'name slug parentCategory')
+      .populate('subcategory', 'name slug parentCategory')
       .sort(sort)
       .skip((page - 1) * limit)
       .limit(limit);
@@ -97,10 +112,9 @@ export const getProductBySlug = async (req: Request, res: Response, next: NextFu
   try {
     const { slug } = req.params;
 
-    const product = await Product.findOne({ slug, isPublished: true }).populate(
-      'category',
-      'name slug'
-    );
+    const product = await Product.findOne({ slug, isPublished: true })
+      .populate('category', 'name slug parentCategory')
+      .populate('subcategory', 'name slug parentCategory');
 
     if (!product) {
       throw new NotFoundError('Product not found');
@@ -143,7 +157,8 @@ export const getAdminProducts = async (req: Request, res: Response, next: NextFu
 
     const total = await Product.countDocuments(query);
     const products = await Product.find(query)
-      .populate('category', 'name slug')
+      .populate('category', 'name slug parentCategory')
+      .populate('subcategory', 'name slug parentCategory')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
@@ -171,6 +186,7 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       sku,
       description,
       category,
+      subcategory,
       brand,
       images,
       sellingPrice,
@@ -215,6 +231,25 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       if (defaultCat) categoryId = defaultCat._id;
     }
 
+    // Resolve subcategory
+    let subcategoryId = subcategory;
+    if (subcategory && typeof subcategory === 'object' && subcategory._id) {
+      subcategoryId = subcategory._id;
+    } else if (subcategory && typeof subcategory === 'string' && mongoose.Types.ObjectId.isValid(subcategory)) {
+      subcategoryId = subcategory;
+    } else if (subcategory && typeof subcategory === 'string') {
+      const foundSub = await Category.findOne({
+        $or: [
+          { slug: subcategory.toLowerCase().trim() },
+          { name: new RegExp(`^${subcategory.trim()}$`, 'i') },
+        ],
+      });
+      if (foundSub) subcategoryId = foundSub._id;
+      else subcategoryId = null;
+    } else {
+      subcategoryId = null;
+    }
+
     // Format & normalize variants
     const sanitizedVariants = Array.isArray(variants)
       ? variants.map((v: any, index: number) => ({
@@ -257,6 +292,7 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       sku: sku.toUpperCase(),
       description,
       category: categoryId,
+      subcategory: subcategoryId,
       brand: brand || 'LUXWEAR',
       images: normalizedImages,
       sellingPrice: Number(sellingPrice),
@@ -272,7 +308,10 @@ export const createProduct = async (req: Request, res: Response, next: NextFunct
       seoDescription,
     });
 
-    await product.populate('category', 'name slug');
+    await product.populate([
+      { path: 'category', select: 'name slug parentCategory' },
+      { path: 'subcategory', select: 'name slug parentCategory' },
+    ]);
 
     await logAuditEvent({
       userId: req.user!._id,
@@ -359,9 +398,32 @@ export const updateProduct = async (req: Request, res: Response, next: NextFunct
       }
     }
 
+    if (updates.category !== undefined) {
+      if (typeof updates.category === 'object' && updates.category._id) {
+        (product as any).category = updates.category._id;
+      } else if (mongoose.Types.ObjectId.isValid(updates.category)) {
+        (product as any).category = updates.category;
+      }
+      delete updates.category;
+    }
+
+    if (updates.subcategory !== undefined) {
+      if (!updates.subcategory) {
+        (product as any).subcategory = null;
+      } else if (typeof updates.subcategory === 'object' && updates.subcategory._id) {
+        (product as any).subcategory = updates.subcategory._id;
+      } else if (mongoose.Types.ObjectId.isValid(updates.subcategory)) {
+        (product as any).subcategory = updates.subcategory;
+      }
+      delete updates.subcategory;
+    }
+
     Object.assign(product, updates);
     await product.save();
-    await product.populate('category', 'name slug');
+    await product.populate([
+      { path: 'category', select: 'name slug parentCategory' },
+      { path: 'subcategory', select: 'name slug parentCategory' },
+    ]);
 
     await logAuditEvent({
       userId: req.user!._id,

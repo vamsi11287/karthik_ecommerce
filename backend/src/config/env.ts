@@ -20,9 +20,16 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().min(1, 'CLOUDINARY_CLOUD_NAME is required'),
   CLOUDINARY_API_KEY: z.string().min(1, 'CLOUDINARY_API_KEY is required'),
   CLOUDINARY_API_SECRET: z.string().min(1, 'CLOUDINARY_API_SECRET is required'),
+  // Email / Nodemailer (optional in development, used for OTP password reset)
+  EMAIL_SERVICE: z.string().optional(),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.string().optional().transform((val) => (val ? Number(val) : 587)),
+  EMAIL_USER: z.string().optional(),
+  EMAIL_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().default('"SPUN Support" <support@spun.com>'),
   SUPER_ADMIN_NAME: z.string().default('Store Owner'),
   SUPER_ADMIN_EMAIL: z.string().email().default('superadmin@luxwear.com'),
-  SUPER_ADMIN_PASSWORD: z.string().min(8).default('SuperAdmin@2026!'),
+  SUPER_ADMIN_PASSWORD: z.string().min(12, 'SUPER_ADMIN_PASSWORD must be at least 12 characters — set it explicitly in .env'),
   SUPER_ADMIN_PHONE: z.string().default('+919876543210'),
 });
 

@@ -11,6 +11,7 @@ import {
   CircularProgress,
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import { useNavigate } from 'react-router-dom';
 import { themeColors } from '../../theme/theme';
 import SectionHeader from '../../components/common/SectionHeader';
@@ -235,7 +236,7 @@ export const HomePage: React.FC = () => {
                   mb: 2.5,
                 }}
               >
-                XIV
+                SPUN
                 <br />
                 COLLECTIONS
                 <br />
@@ -302,6 +303,39 @@ export const HomePage: React.FC = () => {
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
               <CircularProgress size={32} color="inherit" />
             </Box>
+          ) : sortedCollection.length === 0 ? (
+            <Box
+              sx={{
+                textAlign: 'center',
+                py: 8,
+                px: 3,
+                backgroundColor: '#FFFFFF',
+                border: `1px solid ${themeColors.border}`,
+                my: 2,
+              }}
+            >
+              <CheckroomOutlinedIcon sx={{ fontSize: 44, color: themeColors.textMuted, mb: 1.5 }} />
+              <Typography
+                variant="h5"
+                sx={{
+                  fontFamily: '"Syne", sans-serif',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  mb: 1,
+                  letterSpacing: '0.02em',
+                }}
+              >
+                Products Not Available
+              </Typography>
+              <Typography variant="body2" sx={{ color: themeColors.textMuted, mb: 3, maxWidth: 420, mx: 'auto' }}>
+                There are currently no products available in the {selectedCategoryTab} collection. Check back soon for new drops!
+              </Typography>
+              {selectedCategoryTab !== 'ALL' && (
+                <AppButton size="small" onClick={() => setSelectedCategoryTab('ALL')}>
+                  Browse All Collections
+                </AppButton>
+              )}
+            </Box>
           ) : (
             <Grid container spacing={{ xs: 2.5, sm: 3, md: 3.5 }}>
               {sortedCollection.slice(0, 3).map((product) => (
@@ -312,34 +346,36 @@ export const HomePage: React.FC = () => {
             </Grid>
           )}
 
-          {/* "More" button with downward chevron */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
-            <Box
-              onClick={() => navigate('/catalog')}
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                cursor: 'pointer',
-                transition: 'transform 0.2s',
-                '&:hover': { transform: 'translateY(2px)' },
-              }}
-            >
-              <Typography
-                variant="subtitle2"
+          {/* "More" button with downward chevron - only show when products exist */}
+          {sortedCollection.length > 0 && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 6 }}>
+              <Box
+                onClick={() => navigate('/catalog')}
                 sx={{
-                  fontFamily: '"Syne", sans-serif',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  letterSpacing: '0.08em',
-                  mb: 0.5,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  cursor: 'pointer',
+                  transition: 'transform 0.2s',
+                  '&:hover': { transform: 'translateY(2px)' },
                 }}
               >
-                More
-              </Typography>
-              <KeyboardArrowDownIcon sx={{ fontSize: '1.2rem', color: themeColors.black }} />
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    fontFamily: '"Syne", sans-serif',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    letterSpacing: '0.08em',
+                    mb: 0.5,
+                  }}
+                >
+                  More
+                </Typography>
+                <KeyboardArrowDownIcon sx={{ fontSize: '1.2rem', color: themeColors.black }} />
+              </Box>
             </Box>
-          </Box>
+          )}
         </Box>
 
         {/* ============================================================== */}
@@ -372,7 +408,7 @@ export const HomePage: React.FC = () => {
                 lineHeight: 1.8,
               }}
             >
-              At the core of XIV QR, we blend urban architecture and tailored minimalism to create
+              At the core of SPUN, we blend urban architecture and tailored minimalism to create
               apparel that transcends trend and season. Every silhouette is meticulously crafted,
               ensuring the highest quality heavyweight fabrics.
             </Typography>

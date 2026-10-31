@@ -11,6 +11,8 @@ import { logAuditEvent } from '../audit/audit.model';
 import { CheckoutService } from '../checkout/checkout.service';
 import { getStoreSettings } from '../settings/storeSettings.model';
 import { Order } from './order.model';
+import { User } from '../users/user.model';
+import { sendOrderDeliveredEmail, sendOrderReturnStatusEmail } from '../../utils/mailer';
 
 export const getMyOrders = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -123,7 +125,7 @@ export const cancelOrder = async (req: Request, res: Response, next: NextFunctio
 export const requestReturn = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
+    const { reason, items } = req.body;
     const user = req.user!;
 
     const order = await Order.findById(id);
@@ -156,8 +158,44 @@ export const requestReturn = async (req: Request, res: Response, next: NextFunct
       );
     }
 
+    let returnItemsList: any[] = [];
+    if (Array.isArray(items) && items.length > 0) {
+      items.forEach((itemToReturn: any) => {
+        const skuToMatch = typeof itemToReturn === 'string' ? itemToReturn : (itemToReturn.variantSku || itemToReturn.sku);
+        const matched = order.items.find(
+          (oi) => oi.variantSku === skuToMatch || (itemToReturn.productId && oi.productId?.toString() === itemToReturn.productId)
+        );
+        if (matched) {
+          returnItemsList.push({
+            productId: matched.productId,
+            variantSku: matched.variantSku,
+            name: matched.name,
+            image: matched.image,
+            price: matched.price,
+            quantity:
+              typeof itemToReturn === 'object' && itemToReturn.quantity
+                ? Math.min(itemToReturn.quantity, matched.quantity)
+                : matched.quantity,
+          });
+        }
+      });
+    }
+
+    // Fallback: If no items specified, take all items from the order
+    if (returnItemsList.length === 0) {
+      returnItemsList = order.items.map((oi) => ({
+        productId: oi.productId,
+        variantSku: oi.variantSku,
+        name: oi.name,
+        image: oi.image,
+        price: oi.price,
+        quantity: oi.quantity,
+      }));
+    }
+
     order.returnStatus = ReturnStatus.REQUESTED;
     order.returnReason = reason || 'Item return requested by customer';
+    order.returnedItems = returnItemsList;
     await order.save();
 
     return sendResponse({
@@ -242,6 +280,17 @@ export const updateFulfillmentStatus = async (
 
     await order.save();
 
+    // Trigger Order Delivered Email if marked DELIVERED
+    if (status === OrderFulfillmentStatus.DELIVERED) {
+      User.findById(order.user)
+        .then((customerUser) => {
+          if (customerUser) {
+            sendOrderDeliveredEmail(customerUser.email, customerUser.name, order).catch(() => {});
+          }
+        })
+        .catch(() => {});
+    }
+
     await logAuditEvent({
       userId: req.user!._id,
       userEmail: req.user!.email,
@@ -281,11 +330,37 @@ export const reviewReturnRequest = async (req: Request, res: Response, next: Nex
       order.returnStatus = ReturnStatus.REJECTED;
     } else if (decision === 'COMPLETE') {
       order.returnStatus = ReturnStatus.COMPLETED;
+      if (!order.returnRestocked) {
+        const itemsToRestock = (order.returnedItems && order.returnedItems.length > 0
+          ? order.returnedItems
+          : order.items
+        ).map((i: any) => ({
+          productId: i.productId.toString(),
+          variantSku: i.variantSku,
+          quantity: i.quantity,
+        }));
+
+        await CheckoutService.releaseInventory(
+          itemsToRestock,
+          `RET-${order.orderNumber}`,
+          req.user!._id
+        );
+        order.returnRestocked = true;
+      }
     } else {
       throw new BadRequestError("Invalid decision. Must be 'APPROVE', 'REJECT', or 'COMPLETE'");
     }
 
     await order.save();
+
+    // Trigger Return Status Email
+    User.findById(order.user)
+      .then((customerUser) => {
+        if (customerUser) {
+          sendOrderReturnStatusEmail(customerUser.email, customerUser.name, order, decision as any).catch(() => {});
+        }
+      })
+      .catch(() => {});
 
     await logAuditEvent({
       userId: req.user!._id,

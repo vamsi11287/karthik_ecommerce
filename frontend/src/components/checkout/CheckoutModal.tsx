@@ -168,7 +168,7 @@ export const CheckoutModal: React.FC = () => {
           key: checkoutData.razorpay.keyId,
           amount: checkoutData.razorpay.amount,
           currency: checkoutData.razorpay.currency || 'INR',
-          name: 'XIV QR Streetwear',
+          name: 'SPUN Streetwear',
           description: `Order #${checkoutData.order.orderNumber}`,
           order_id: checkoutData.razorpay.orderId,
           prefill: {
@@ -287,7 +287,7 @@ export const CheckoutModal: React.FC = () => {
               Order Confirmed
             </Typography>
             <Typography variant="body1" sx={{ color: themeColors.textSecondary, mb: 1 }}>
-              Thank you for shopping with XIV QR.
+              Thank you for shopping with SPUN.
             </Typography>
             <Typography
               variant="h6"
@@ -402,6 +402,51 @@ export const CheckoutModal: React.FC = () => {
                 </Typography>
 
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {/* Saved Address Picker */}
+                  {user?.addresses && user.addresses.length > 0 && (
+                    <Box sx={{ p: 1.5, backgroundColor: '#F0FDF4', border: '1px solid #BBF7D0' }}>
+                      <Typography variant="caption" sx={{ fontWeight: 700, color: '#166534', display: 'block', mb: 1 }}>
+                        📍 Use a Saved Address
+                      </Typography>
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
+                        {user.addresses.map((addr: any) => (
+                          <Box
+                            key={addr._id}
+                            onClick={() =>
+                              setShippingAddress({
+                                fullName: addr.fullName,
+                                phone: addr.phone,
+                                addressLine1: addr.addressLine1 || addr.street || '',
+                                addressLine2: addr.addressLine2 || '',
+                                city: addr.city,
+                                state: addr.state,
+                                postalCode: addr.postalCode,
+                                country: addr.country || 'India',
+                              })
+                            }
+                            sx={{
+                              cursor: 'pointer',
+                              p: 1,
+                              border: '1px solid #BBF7D0',
+                              backgroundColor: '#FFFFFF',
+                              borderRadius: 0,
+                              '&:hover': { backgroundColor: '#ECFDF5' },
+                              fontSize: '0.78rem',
+                              fontFamily: '"Inter", sans-serif',
+                            }}
+                          >
+                            <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>
+                              {addr.fullName} {addr.isDefault ? '(Default)' : ''}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: '#166534' }}>
+                              {addr.city}, {addr.state} — {addr.postalCode}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+
                   <TextField
                     required
                     fullWidth
@@ -711,7 +756,7 @@ export const CheckoutModal: React.FC = () => {
                     fontSize: '0.7rem',
                   }}
                 >
-                  By placing your order, you agree to XIV QR's Terms of Sale and Privacy Policy.
+                  By placing your order, you agree to SPUN's Terms of Sale and Privacy Policy.
                 </Typography>
               </Box>
             </Box>

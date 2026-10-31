@@ -13,6 +13,7 @@ import { Cart } from '../cart/cart.model';
 import { Order } from '../orders/order.model';
 import { Payment } from '../payments/payment.model';
 import { CheckoutService } from './checkout.service';
+import { sendOrderConfirmationEmail } from '../../utils/mailer';
 
 export const getCheckoutQuote = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -49,6 +50,14 @@ export const initiateCheckout = async (req: Request, res: Response, next: NextFu
       throw new BadRequestError('Shipping address is required');
     }
 
+    const requiredAddressFields: Array<keyof typeof rawAddress> = ['fullName', 'phone', 'city', 'state', 'postalCode'];
+    const missingFields = requiredAddressFields.filter(
+      (f) => !rawAddress[f] || !String(rawAddress[f]).trim()
+    );
+    if (missingFields.length > 0) {
+      throw new BadRequestError(`Shipping address is missing required fields: ${missingFields.join(', ')}`);
+    }
+
     const street =
       rawAddress.street ||
       [rawAddress.addressLine1, rawAddress.addressLine2].filter(Boolean).join(', ') ||
@@ -56,14 +65,14 @@ export const initiateCheckout = async (req: Request, res: Response, next: NextFu
       '';
 
     const shippingAddress = {
-      fullName: rawAddress.fullName || rawAddress.name || user.name || 'Valued Customer',
-      phone: rawAddress.phone || user.phone || '9999999999',
+      fullName: rawAddress.fullName.trim(),
+      phone: rawAddress.phone.trim(),
       street,
       addressLine1: rawAddress.addressLine1 || street,
       addressLine2: rawAddress.addressLine2 || '',
-      city: rawAddress.city || 'Metropolis',
-      state: rawAddress.state || 'State',
-      postalCode: rawAddress.postalCode || rawAddress.pincode || rawAddress.zipCode || '560001',
+      city: rawAddress.city.trim(),
+      state: rawAddress.state.trim(),
+      postalCode: (rawAddress.postalCode || rawAddress.pincode || rawAddress.zipCode).trim(),
       country: rawAddress.country || 'India',
     };
 
@@ -193,6 +202,9 @@ export const initiateCheckout = async (req: Request, res: Response, next: NextFu
 
         // Clear user's cart
         await Cart.findOneAndUpdate({ user: user._id }, { items: [] });
+
+        // Trigger Order Confirmation Email
+        sendOrderConfirmationEmail(user.email, user.name, order).catch(() => {});
 
         return sendResponse({
           res,

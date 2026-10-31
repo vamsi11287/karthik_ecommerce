@@ -5,7 +5,7 @@ export interface ICategory extends Document {
   slug: string;
   description?: string;
   image?: string;
-  parentCategory?: mongoose.Types.ObjectId;
+  parentCategory?: mongoose.Types.ObjectId | null;
   isActive: boolean;
   displayOrder: number;
   createdAt: Date;

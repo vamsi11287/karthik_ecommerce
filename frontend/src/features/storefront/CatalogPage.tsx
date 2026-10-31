@@ -14,9 +14,11 @@ import {
   FormControlLabel,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
+import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import { useSearchParams } from 'react-router-dom';
 import { themeColors } from '../../theme/theme';
 import ProductCard from '../../components/common/ProductCard';
+import AppButton from '../../components/common/AppButton';
 import { storeApi } from '../../hooks/useApi';
 import type { Product } from '../../types';
 
@@ -28,18 +30,51 @@ export const CatalogPage: React.FC = () => {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mainCategories, setMainCategories] = useState<Array<{ id: string; label: string }>>([]);
   const [categoryFilter, setCategoryFilter] = useState(initialCategory);
   const [searchFilter, setSearchFilter] = useState(initialSearch);
   const [sortBy, setSortBy] = useState(initialSort);
   const [onlyInStock, setOnlyInStock] = useState(false);
 
+  // Load Main Categories dynamically from Backend API (no subcategories)
   useEffect(() => {
-    setLoading(true);
     storeApi
-      .getProducts({ limit: 40 })
+      .getCategories()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        if (Array.isArray(list)) {
+          const parents = list.filter((c: any) => !c.parentCategory);
+          setMainCategories(
+            parents.map((c: any) => ({
+              id: c.slug || c.name.toLowerCase(),
+              label: c.name,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Sync category filter when URL search parameter changes
+  useEffect(() => {
+    const urlCategory = searchParams.get('category') || 'all';
+    if (urlCategory !== categoryFilter) {
+      setCategoryFilter(urlCategory);
+    }
+  }, [searchParams]);
+
+  // Fetch products from API based on the selected category
+  const fetchProductsByCategory = (cat: string) => {
+    setLoading(true);
+    const params: { limit: number; category?: string } = { limit: 40 };
+    if (cat && cat !== 'all') {
+      params.category = cat;
+    }
+    storeApi
+      .getProducts(params)
       .then((res) => {
         const prodList = res.data?.data?.products || res.data?.products || res.data?.data || [];
-        setProducts(prodList);
+        setProducts(Array.isArray(prodList) ? prodList : []);
       })
       .catch(() => {
         setProducts([]);
@@ -47,29 +82,24 @@ export const CatalogPage: React.FC = () => {
       .finally(() => {
         setLoading(false);
       });
-  }, []);
+  };
 
-  // Update query params
-  const handleCategoryChange = (cat: string) => {
-    setCategoryFilter(cat);
+  // Trigger API call whenever categoryFilter changes
+  useEffect(() => {
+    fetchProductsByCategory(categoryFilter);
+  }, [categoryFilter]);
+
+  // Update category and query params on pill click
+  const handleCategoryChange = (catId: string) => {
+    setCategoryFilter(catId);
     const newParams = new URLSearchParams(searchParams);
-    if (cat === 'all') newParams.delete('category');
-    else newParams.set('category', cat);
+    if (catId === 'all') newParams.delete('category');
+    else newParams.set('category', catId);
     setSearchParams(newParams);
   };
 
   // Filtered & Sorted results
   const filteredProducts = products.filter((p) => {
-    // Category check
-    if (categoryFilter !== 'all') {
-      const catSlug = typeof p.category === 'object' ? p.category?.slug : '';
-      const catName = typeof p.category === 'object' ? p.category?.name : '';
-      const match =
-        catSlug.toLowerCase().includes(categoryFilter.toLowerCase()) ||
-        catName.toLowerCase().includes(categoryFilter.toLowerCase());
-      if (!match) return false;
-    }
-
     // Search query check
     if (searchFilter.trim()) {
       const q = searchFilter.toLowerCase();
@@ -132,12 +162,9 @@ export const CatalogPage: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
             {[
               { id: 'all', label: 'All Items' },
-              { id: 'men', label: 'Men' },
-              { id: 'women', label: 'Women' },
-              { id: 'collections', label: 'Capsules' },
-              { id: 'accessories', label: 'Accessories' },
+              ...mainCategories,
             ].map((cat) => {
-              const active = categoryFilter === cat.id;
+              const active = categoryFilter.toLowerCase() === cat.id.toLowerCase();
               return (
                 <Chip
                   key={cat.id}
@@ -152,6 +179,9 @@ export const CatalogPage: React.FC = () => {
                     fontSize: '0.75rem',
                     borderRadius: 0,
                     cursor: 'pointer',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.04em',
+                    px: 0.5,
                     '&:hover': { backgroundColor: active ? themeColors.black : '#F0F0EC' },
                   }}
                 />
@@ -228,13 +258,49 @@ export const CatalogPage: React.FC = () => {
             <CircularProgress size={36} color="inherit" />
           </Box>
         ) : sortedProducts.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 12 }}>
-            <Typography variant="h5" sx={{ fontFamily: '"Syne", sans-serif', fontWeight: 700, mb: 1 }}>
-              No Pieces Found
+          <Box
+            sx={{
+              textAlign: 'center',
+              py: 10,
+              px: 3,
+              backgroundColor: '#FFFFFF',
+              border: `1px solid ${themeColors.border}`,
+              maxWidth: 500,
+              mx: 'auto',
+              my: 4,
+            }}
+          >
+            <CheckroomOutlinedIcon sx={{ fontSize: 48, color: themeColors.textMuted, mb: 1.5 }} />
+            <Typography
+              variant="h5"
+              sx={{
+                fontFamily: '"Syne", sans-serif',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                mb: 1,
+              }}
+            >
+              Products Not Available
             </Typography>
-            <Typography variant="body2" sx={{ color: themeColors.textMuted }}>
-              Try adjusting your search criteria or clearing filters.
+            <Typography variant="body2" sx={{ color: themeColors.textMuted, mb: 3 }}>
+              {categoryFilter && categoryFilter !== 'all'
+                ? `There are currently no products available in the selected category.`
+                : searchFilter
+                ? `No products match your search for "${searchFilter}".`
+                : 'No products are currently available in this section.'}
             </Typography>
+            {(categoryFilter !== 'all' || searchFilter || onlyInStock) && (
+              <AppButton
+                size="small"
+                onClick={() => {
+                  handleCategoryChange('all');
+                  setSearchFilter('');
+                  setOnlyInStock(false);
+                }}
+              >
+                Clear Filters & View All
+              </AppButton>
+            )}
           </Box>
         ) : (
           <Grid container spacing={{ xs: 2.5, sm: 3, md: 3.5 }}>

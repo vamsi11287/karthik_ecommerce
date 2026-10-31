@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Drawer,
   Box,
@@ -18,6 +18,7 @@ import { setMobileMenuOpen } from '../../app/uiSlice';
 import { themeColors } from '../../theme/theme';
 import useAuth from '../../hooks/useAuth';
 import useWishlist from '../../hooks/useWishlist';
+import { storeApi } from '../../hooks/useApi';
 
 export const MobileDrawer: React.FC = () => {
   const dispatch = useAppDispatch();
@@ -26,12 +27,44 @@ export const MobileDrawer: React.FC = () => {
   const { user, isAuthenticated, isAdmin, logout, openAuthModal } = useAuth();
   const { wishlistCount, openWishlist } = useWishlist();
 
+  const [categories, setCategories] = useState<Array<{ label: string; path: string }>>([]);
+
+  useEffect(() => {
+    storeApi
+      .getCategories()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        if (Array.isArray(list)) {
+          const parents = list.filter((c: any) => !c.parentCategory);
+          setCategories(
+            parents.map((c: any) => ({
+              label: c.name,
+              path: `/catalog?category=${encodeURIComponent(c.slug || c.name.toLowerCase())}`,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const handleClose = () => dispatch(setMobileMenuOpen(false));
 
   const handleNav = (path: string) => {
     handleClose();
     navigate(path);
   };
+
+  const navItems = [
+    { label: 'Home', path: '/' },
+    { label: 'Collections', path: '/catalog' },
+    ...(categories.length > 0
+      ? categories
+      : [
+          { label: 'Men', path: '/catalog?category=men' },
+          { label: 'Women', path: '/catalog?category=women' },
+          { label: 'Others', path: '/catalog?category=others' },
+        ]),
+  ];
 
   return (
     <Drawer
@@ -49,29 +82,22 @@ export const MobileDrawer: React.FC = () => {
       }}
     >
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography
-          variant="h6"
+        <Box
+          component="img"
+          src="/logo.png"
+          alt="SPUN"
           sx={{
-            fontFamily: '"Syne", sans-serif',
-            fontWeight: 800,
-            letterSpacing: '0.12em',
+            height: 30,
+            objectFit: 'contain',
           }}
-        >
-          XIV QR
-        </Typography>
+        />
         <IconButton onClick={handleClose} size="small" sx={{ color: themeColors.black }}>
           <CloseIcon />
         </IconButton>
       </Box>
 
       <List sx={{ pt: 0 }}>
-        {[
-          { label: 'Home', path: '/' },
-          { label: 'Collections', path: '/catalog' },
-          { label: 'New Arrivals', path: '/catalog?sort=newest' },
-          { label: 'Men Essentials', path: '/catalog?category=men' },
-          { label: 'Women Capsule', path: '/catalog?category=women' },
-        ].map((item) => (
+        {navItems.map((item) => (
           <ListItem key={item.label} disablePadding>
             <ListItemButton
               onClick={() => handleNav(item.path)}

@@ -25,6 +25,7 @@ export interface IProduct extends Document {
   sku: string;
   description: string;
   category: mongoose.Types.ObjectId;
+  subcategory?: mongoose.Types.ObjectId;
   brand: string;
   images: IProductImage[];
   sellingPrice: number;
@@ -76,6 +77,7 @@ const ProductSchema = new Schema<IProduct>(
     sku: { type: String, required: true, unique: true, uppercase: true, trim: true, index: true },
     description: { type: String, required: true, trim: true },
     category: { type: Schema.Types.ObjectId, ref: 'Category', required: true, index: true },
+    subcategory: { type: Schema.Types.ObjectId, ref: 'Category', default: null, index: true },
     brand: { type: String, default: 'LUXWEAR', trim: true, index: true },
     images: { type: [ProductImageSchema], default: [] },
     sellingPrice: { type: Number, required: true, min: 0, index: true },

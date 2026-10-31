@@ -26,7 +26,6 @@ import AdminProducts from './features/admin/AdminProducts';
 import AdminOrders from './features/admin/AdminOrders';
 import AdminSettings from './features/admin/AdminSettings';
 import AdminCoupons from './features/admin/AdminCoupons';
-import AdminInventory from './features/admin/AdminInventory';
 import AdminAuditLogs from './features/admin/AdminAuditLogs';
 
 export const App: React.FC = () => {
@@ -59,7 +58,6 @@ export const App: React.FC = () => {
             <Route path="orders" element={<AdminOrders />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="coupons" element={<AdminCoupons />} />
-            <Route path="inventory" element={<AdminInventory />} />
             <Route path="audit-logs" element={<AdminAuditLogs />} />
           </Route>
 

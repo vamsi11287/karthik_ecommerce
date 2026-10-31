@@ -21,26 +21,18 @@ export const Footer: React.FC = () => {
         <Grid container spacing={{ xs: 4, md: 6 }} sx={{ mb: { xs: 8, md: 10 } }}>
           {/* Column 1: Brand & Manifesto */}
           <Grid size={{ xs: 12, md: 4 }}>
+            {/* Brand Logo & Manifesto */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
               <Box
+                component="img"
+                src="/logo.png"
+                alt="SPUN"
                 sx={{
-                  width: 14,
-                  height: 14,
-                  backgroundColor: '#FFFFFF',
-                  transform: 'rotate(45deg)',
+                  height: 32,
+                  filter: 'invert(1)',
+                  objectFit: 'contain',
                 }}
               />
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: '"Syne", sans-serif',
-                  fontWeight: 800,
-                  letterSpacing: '0.15em',
-                  color: '#FFFFFF',
-                }}
-              >
-                XIV QR
-              </Typography>
             </Box>
             <Typography
               variant="body2"
@@ -198,7 +190,7 @@ export const Footer: React.FC = () => {
           </Grid>
         </Grid>
 
-        {/* Centerpiece Large Brand Artwork matching Attachment 2 */}
+        {/* Centerpiece Large Brand Artwork */}
         <Box
           sx={{
             textAlign: 'center',
@@ -216,28 +208,16 @@ export const Footer: React.FC = () => {
             }}
           >
             <Box
+              component="img"
+              src="/logo.png"
+              alt="SPUN"
               sx={{
-                width: 28,
-                height: 28,
-                backgroundColor: '#FFFFFF',
-                transform: 'rotate(45deg)',
+                height: { xs: 48, sm: 68, md: 84 },
+                filter: 'invert(1)',
+                objectFit: 'contain',
                 mb: 1.5,
               }}
             />
-            <Typography
-              variant="h1"
-              sx={{
-                fontFamily: '"Syne", sans-serif',
-                fontWeight: 800,
-                fontSize: { xs: '3.5rem', sm: '5.5rem', md: '7.5rem' },
-                color: '#FFFFFF',
-                letterSpacing: '0.12em',
-                lineHeight: 0.9,
-                userSelect: 'none',
-              }}
-            >
-              XIV QR
-            </Typography>
             <Typography
               variant="caption"
               sx={{
@@ -245,7 +225,7 @@ export const Footer: React.FC = () => {
                 letterSpacing: '0.25em',
                 color: '#71716E',
                 textTransform: 'uppercase',
-                mt: 1.5,
+                mt: 1,
                 fontSize: '0.72rem',
               }}
             >
@@ -265,7 +245,7 @@ export const Footer: React.FC = () => {
           }}
         >
           <Typography variant="caption" sx={{ color: '#71716E' }}>
-            © {new Date().getFullYear()} XIV QR Inc. All rights reserved. Single-Vendor Production Storefront.
+            © {new Date().getFullYear()} SPUN Inc. All rights reserved. Single-Vendor Production Storefront.
           </Typography>
           <Box sx={{ display: 'flex', gap: 3 }}>
             <Typography

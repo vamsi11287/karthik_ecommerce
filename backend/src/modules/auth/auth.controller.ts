@@ -5,6 +5,7 @@ import { UserRole } from '../../config/constants';
 import { BadRequestError, ConflictError, NotFoundError, UnauthorizedError } from '../../utils/errors';
 import { sendResponse } from '../../utils/response';
 import { clearTokenCookie, sendTokenCookie, signToken } from '../../utils/token';
+import { sendPasswordResetOtpEmail } from '../../utils/mailer';
 import { User } from '../users/user.model';
 
 export const register = async (req: Request, res: Response, next: NextFunction) => {
@@ -204,6 +205,127 @@ export const deleteAddress = async (req: Request, res: Response, next: NextFunct
       res,
       message: 'Address removed successfully',
       data: user.addresses,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 1. Request Password Reset OTP
+ * Generates 6-digit OTP, saves hashed OTP + 10-minute expiry, sends email
+ */
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = req.body;
+    const cleanEmail = email.trim().toLowerCase();
+
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user) {
+      // Security: Don't reveal whether user exists
+      return sendResponse({
+        res,
+        message: 'If an account exists with this email, a 6-digit verification code has been dispatched.',
+      });
+    }
+
+    if (!user.isActive) {
+      throw new BadRequestError('This account is deactivated. Please contact customer support.');
+    }
+
+    // Generate 6-digit cryptographic random OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Hash OTP before storing in database for security
+    const salt = await bcrypt.genSalt(10);
+    user.resetPasswordOtp = await bcrypt.hash(otp, salt);
+    user.resetPasswordOtpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await user.save();
+
+    // Send email via Nodemailer
+    await sendPasswordResetOtpEmail(user.email, otp, user.name);
+
+    return sendResponse({
+      res,
+      message: 'Verification code sent to your email address.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 2. Verify OTP Code
+ */
+export const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, otp } = req.body;
+    const cleanEmail = email.trim().toLowerCase();
+
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user || !user.resetPasswordOtp || !user.resetPasswordOtpExpires) {
+      throw new BadRequestError('Invalid or expired password reset request. Please request a new code.');
+    }
+
+    if (new Date() > user.resetPasswordOtpExpires) {
+      user.resetPasswordOtp = undefined;
+      user.resetPasswordOtpExpires = undefined;
+      await user.save();
+      throw new BadRequestError('Verification code has expired. Please request a new one.');
+    }
+
+    const isValid = await bcrypt.compare(otp.trim(), user.resetPasswordOtp);
+    if (!isValid) {
+      throw new BadRequestError('Incorrect verification code. Please check your email and try again.');
+    }
+
+    return sendResponse({
+      res,
+      message: 'Verification code verified successfully. Please enter your new password.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * 3. Reset Password
+ */
+export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    const cleanEmail = email.trim().toLowerCase();
+
+    const user = await User.findOne({ email: cleanEmail });
+    if (!user || !user.resetPasswordOtp || !user.resetPasswordOtpExpires) {
+      throw new BadRequestError('Invalid or expired password reset session.');
+    }
+
+    if (new Date() > user.resetPasswordOtpExpires) {
+      user.resetPasswordOtp = undefined;
+      user.resetPasswordOtpExpires = undefined;
+      await user.save();
+      throw new BadRequestError('Verification code has expired. Please request a new one.');
+    }
+
+    const isValid = await bcrypt.compare(otp.trim(), user.resetPasswordOtp);
+    if (!isValid) {
+      throw new BadRequestError('Incorrect verification code.');
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+
+    // Clear reset OTP fields
+    user.resetPasswordOtp = undefined;
+    user.resetPasswordOtpExpires = undefined;
+    await user.save();
+
+    return sendResponse({
+      res,
+      message: 'Password reset successful! You can now sign in with your new password.',
     });
   } catch (error) {
     next(error);

@@ -78,6 +78,19 @@ export const useAuth = () => {
 
       dispatch(setUser(userData));
       resetWishlistFetchStatus();
+
+      // Merge guest cart after login
+      const sessionId = localStorage.getItem('xiv_session_id') || localStorage.getItem('sessionId');
+      if (sessionId) {
+        try {
+          await storeApi.mergeCart(sessionId);
+          localStorage.removeItem('xiv_session_id');
+          localStorage.removeItem('sessionId');
+        } catch {
+          // Non-critical — user cart still works
+        }
+      }
+
       dispatch(showToast({ message: `Welcome back, ${userData.name}!`, severity: 'success' }));
       dispatch(setAuthModalOpen(false));
 
@@ -114,6 +127,19 @@ export const useAuth = () => {
       };
 
       dispatch(setUser(userData));
+
+      // Merge guest cart after registration
+      const sessionId = localStorage.getItem('xiv_session_id') || localStorage.getItem('sessionId');
+      if (sessionId) {
+        try {
+          await storeApi.mergeCart(sessionId);
+          localStorage.removeItem('xiv_session_id');
+          localStorage.removeItem('sessionId');
+        } catch {
+          // Non-critical — user cart still works
+        }
+      }
+
       dispatch(showToast({ message: 'Account created successfully!', severity: 'success' }));
       dispatch(setAuthModalOpen(false));
 

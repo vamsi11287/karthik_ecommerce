@@ -85,6 +85,11 @@ export const storeApi = {
   getProducts: (params?: Record<string, any>) => apiClient.get('/products', { params }),
   getProductBySlug: (slug: string) => apiClient.get(`/products/${slug}`),
   getCategories: () => apiClient.get('/categories'),
+  createCategory: (payload: { name: string; slug?: string; description?: string; parentCategory?: string | null }) =>
+    apiClient.post('/categories', payload),
+  updateCategory: (id: string, payload: { name?: string; description?: string; parentCategory?: string | null }) =>
+    apiClient.patch(`/categories/${id}`, payload),
+  deleteCategory: (id: string) => apiClient.delete(`/categories/${id}`),
   getActiveOffers: () => apiClient.get('/offers/active'),
 
   // Cart
@@ -119,6 +124,15 @@ export const storeApi = {
   getOrderById: (orderId: string) => apiClient.get(`/orders/${orderId}`),
   cancelOrder: (orderId: string, reason: string) =>
     apiClient.post(`/orders/${orderId}/cancel`, { reason }),
+  requestReturn: (
+    orderId: string,
+    payload: string | { reason: string; items?: any[] }
+  ) => {
+    const data = typeof payload === 'string' ? { reason: payload } : payload;
+    return apiClient.post(`/orders/${orderId}/return`, data);
+  },
+  reviewReturnRequest: (orderId: string, decision: 'APPROVE' | 'REJECT' | 'COMPLETE') =>
+    apiClient.patch(`/orders/${orderId}/return-review`, { decision }),
 
   // Reviews
   getProductReviews: (productId: string, params?: any) =>
@@ -139,6 +153,14 @@ export const storeApi = {
   register: (userData: { name: string; email: string; password: string; phone?: string }) =>
     apiClient.post('/auth/register', userData),
   logout: () => apiClient.post('/auth/logout'),
+  forgotPassword: (email: string) => apiClient.post('/auth/forgot-password', { email }),
+  verifyOtp: (email: string, otp: string) => apiClient.post('/auth/verify-otp', { email, otp }),
+  resetPassword: (payload: { email: string; otp: string; newPassword: string }) =>
+    apiClient.post('/auth/reset-password', payload),
+  getMyAddresses: () => apiClient.get('/auth/me'),
+  addAddress: (address: any) => apiClient.post('/auth/addresses', address),
+  deleteAddress: (addressId: string) => apiClient.delete(`/auth/addresses/${addressId}`),
+  mergeCart: (sessionId: string) => apiClient.post('/cart/merge', { sessionId }),
 
   // Admin Operations
   getAdminProducts: (params?: any) => apiClient.get('/products/admin/all', { params: { ...params, limit: 50 } }),
@@ -150,8 +172,12 @@ export const storeApi = {
   deleteProductImage: (publicId: string) => apiClient.delete('/upload/image', { data: { publicId } }),
 
   getAdminOrders: (params?: any) => apiClient.get('/orders', { params }),
-  updateOrderStatus: (id: string, fulfillmentStatus: string) =>
-    apiClient.patch(`/orders/${id}/status`, { fulfillmentStatus }),
+  updateOrderStatus: (
+    id: string,
+    fulfillmentStatus: string,
+    trackingDetails?: { courierName?: string; trackingNumber?: string; trackingUrl?: string }
+  ) =>
+    apiClient.patch(`/orders/${id}/status`, { fulfillmentStatus, ...trackingDetails }),
 
   getAdminSettings: () => apiClient.get('/settings/admin'),
   updatePaymentSettings: (paymentMethods: any) =>

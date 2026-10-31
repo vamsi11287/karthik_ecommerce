@@ -35,6 +35,19 @@ export const AdminDashboard: React.FC = () => {
     (sum, o) => sum + (o.pricing?.grandTotal || (o as any).grandTotal || 0),
     0
   );
+
+  const totalReturnsDeduction = orders
+    .filter((o) => o.returnStatus === 'APPROVED' || o.returnStatus === 'COMPLETED')
+    .reduce((sum, o) => {
+      const itemsDeduction = (o.returnedItems || []).reduce(
+        (acc, it) => acc + (it.price * it.quantity),
+        0
+      );
+      return sum + (itemsDeduction > 0 ? itemsDeduction : (o.pricing?.grandTotal || (o as any).grandTotal || 0));
+    }, 0);
+
+  const netSales = Math.max(0, totalGrossSales - totalReturnsDeduction);
+
   const activeOrdersCount = orders.filter(
     (o) => o.fulfillmentStatus !== 'DELIVERED' && o.fulfillmentStatus !== 'CANCELLED'
   ).length;
@@ -43,8 +56,11 @@ export const AdminDashboard: React.FC = () => {
   const stats = [
     {
       label: 'Gross Sales',
-      value: `₹${totalGrossSales.toLocaleString()}`,
-      subtitle: 'From authorized payments',
+      value: `₹${netSales.toLocaleString()}`,
+      subtitle:
+        totalReturnsDeduction > 0
+          ? `₹${totalGrossSales.toLocaleString()} gross (-₹${totalReturnsDeduction.toLocaleString()} returned)`
+          : 'From authorized payments',
       icon: <TrendingUpOutlinedIcon sx={{ fontSize: 28, color: '#10B981' }} />,
     },
     {
@@ -175,50 +191,146 @@ export const AdminDashboard: React.FC = () => {
                     </Box>
                   </Box>
                   <Box component="tbody">
-                    {orders.slice(0, 5).map((order) => (
-                      <Box
-                        component="tr"
-                        key={order._id}
-                        sx={{ borderBottom: `1px solid ${themeColors.border}`, '&:hover': { backgroundColor: '#F9F9F7' } }}
-                      >
-                        <Box component="td" sx={{ py: 1.5, px: 2, fontWeight: 700 }}>
-                          #{order.orderNumber}
+                    {orders.slice(0, 5).map((order) => {
+                      const isReturnApprovedOrCompleted = order.returnStatus === 'APPROVED' || order.returnStatus === 'COMPLETED';
+                      const returnedItemsCount = order.returnedItems?.reduce((acc, it) => acc + it.quantity, 0) || 0;
+                      const orderGrandTotal = order.pricing?.grandTotal || (order as any).grandTotal || 0;
+                      const returnedAmount = isReturnApprovedOrCompleted
+                        ? (order.returnedItems && order.returnedItems.length > 0
+                            ? order.returnedItems.reduce((acc, it) => acc + (it.price * it.quantity), 0)
+                            : orderGrandTotal)
+                        : 0;
+                      const netOrderTotal = Math.max(0, orderGrandTotal - returnedAmount);
+
+                      return (
+                        <Box
+                          component="tr"
+                          key={order._id}
+                          sx={{ borderBottom: `1px solid ${themeColors.border}`, '&:hover': { backgroundColor: '#F9F9F7' } }}
+                        >
+                          <Box component="td" sx={{ py: 1.5, px: 2, fontWeight: 700 }}>
+                            #{order.orderNumber}
+                          </Box>
+                          <Box component="td" sx={{ py: 1.5, px: 2 }}>
+                            {order.shippingAddress?.fullName || 'Customer'}
+                          </Box>
+                          <Box component="td" sx={{ py: 1.5, px: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                              <span>{order.items?.length || 0} pcs</span>
+                              {isReturnApprovedOrCompleted && returnedItemsCount > 0 && (
+                                <Chip
+                                  label={`${returnedItemsCount} RETURNED`}
+                                  size="small"
+                                  sx={{
+                                    borderRadius: 0,
+                                    fontSize: '0.62rem',
+                                    fontWeight: 700,
+                                    height: 18,
+                                    backgroundColor: '#FEE2E2',
+                                    color: '#991B1B',
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          </Box>
+                          <Box component="td" sx={{ py: 1.5, px: 2 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.3 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                                <Typography variant="body2" sx={{ fontWeight: 800, fontSize: '0.85rem' }}>
+                                  ₹{netOrderTotal}
+                                </Typography>
+                                {isReturnApprovedOrCompleted && returnedAmount > 0 && (
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ textDecoration: 'line-through', color: themeColors.textMuted, fontSize: '0.72rem' }}
+                                  >
+                                    ₹{orderGrandTotal}
+                                  </Typography>
+                                )}
+                              </Box>
+                              {isReturnApprovedOrCompleted && returnedAmount > 0 && (
+                                <Chip
+                                  label={`-₹${returnedAmount} Returned`}
+                                  size="small"
+                                  sx={{
+                                    borderRadius: 0,
+                                    fontSize: '0.6rem',
+                                    fontWeight: 700,
+                                    height: 16,
+                                    backgroundColor: '#FEF2F2',
+                                    color: '#DC2626',
+                                    border: '1px solid #FECACA',
+                                    width: 'fit-content',
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          </Box>
+                          <Box component="td" sx={{ py: 1.5, px: 2 }}>
+                            <Chip
+                              label={order.paymentMethod}
+                              size="small"
+                              sx={{ borderRadius: 0, fontSize: '0.68rem', fontWeight: 600 }}
+                            />
+                          </Box>
+                          <Box component="td" sx={{ py: 1.5, px: 2 }}>
+                            <Box sx={{ display: 'flex', gap: 0.6, flexWrap: 'wrap', alignItems: 'center' }}>
+                              <Chip
+                                label={order.fulfillmentStatus}
+                                size="small"
+                                sx={{
+                                  borderRadius: 0,
+                                  fontSize: '0.68rem',
+                                  fontWeight: 700,
+                                  backgroundColor:
+                                    order.fulfillmentStatus === 'DELIVERED'
+                                      ? '#ECFDF5'
+                                      : order.fulfillmentStatus === 'CONFIRMED'
+                                      ? '#EFF6FF'
+                                      : '#F3F4F6',
+                                  color:
+                                    order.fulfillmentStatus === 'DELIVERED'
+                                      ? '#065F46'
+                                      : order.fulfillmentStatus === 'CONFIRMED'
+                                      ? '#1E40AF'
+                                      : '#374151',
+                                }}
+                              />
+                              {order.returnStatus && order.returnStatus !== 'NOT_REQUESTED' && (
+                                <Chip
+                                  label={`RETURN: ${order.returnStatus}`}
+                                  size="small"
+                                  sx={{
+                                    borderRadius: 0,
+                                    fontSize: '0.65rem',
+                                    fontWeight: 800,
+                                    backgroundColor:
+                                      order.returnStatus === 'APPROVED' || order.returnStatus === 'COMPLETED'
+                                        ? '#FEF3C7'
+                                        : order.returnStatus === 'REJECTED'
+                                        ? '#FEE2E2'
+                                        : '#E0E7FF',
+                                    color:
+                                      order.returnStatus === 'APPROVED' || order.returnStatus === 'COMPLETED'
+                                        ? '#92400E'
+                                        : order.returnStatus === 'REJECTED'
+                                        ? '#991B1B'
+                                        : '#3730A3',
+                                    border: '1px solid',
+                                    borderColor:
+                                      order.returnStatus === 'APPROVED' || order.returnStatus === 'COMPLETED'
+                                        ? '#FDE68A'
+                                        : order.returnStatus === 'REJECTED'
+                                        ? '#FECACA'
+                                        : '#C7D2FE',
+                                  }}
+                                />
+                              )}
+                            </Box>
+                          </Box>
                         </Box>
-                        <Box component="td" sx={{ py: 1.5, px: 2 }}>
-                          {order.shippingAddress?.fullName || 'Customer'}
-                        </Box>
-                        <Box component="td" sx={{ py: 1.5, px: 2 }}>
-                          {order.items?.length || 0} pcs
-                        </Box>
-                        <Box component="td" sx={{ py: 1.5, px: 2, fontWeight: 700 }}>
-                          ₹{order.pricing?.grandTotal || (order as any).grandTotal}
-                        </Box>
-                        <Box component="td" sx={{ py: 1.5, px: 2 }}>
-                          <Chip
-                            label={order.paymentMethod}
-                            size="small"
-                            sx={{ borderRadius: 0, fontSize: '0.68rem', fontWeight: 600 }}
-                          />
-                        </Box>
-                        <Box component="td" sx={{ py: 1.5, px: 2 }}>
-                          <Chip
-                            label={order.fulfillmentStatus}
-                            size="small"
-                            sx={{
-                              borderRadius: 0,
-                              fontSize: '0.68rem',
-                              fontWeight: 700,
-                              backgroundColor:
-                                order.fulfillmentStatus === 'DELIVERED'
-                                  ? '#ECFDF5'
-                                  : order.fulfillmentStatus === 'CONFIRMED'
-                                  ? '#EFF6FF'
-                                  : '#F3F4F6',
-                            }}
-                          />
-                        </Box>
-                      </Box>
-                    ))}
+                      );
+                    })}
                   </Box>
                 </Box>
               </Box>

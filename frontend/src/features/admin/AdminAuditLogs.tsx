@@ -89,7 +89,7 @@ export const AdminAuditLogs: React.FC = () => {
                   }}
                 >
                   <Box component="td" sx={{ py: 1.5, px: 2, fontSize: '0.8rem', color: themeColors.textMuted }}>
-                    {new Date(log.timestamp).toLocaleString()}
+                    {log.createdAt || log.timestamp ? new Date(log.createdAt || log.timestamp || '').toLocaleString() : '—'}
                   </Box>
                   <Box component="td" sx={{ py: 1.5, px: 2, fontWeight: 600 }}>
                     {log.userEmail}

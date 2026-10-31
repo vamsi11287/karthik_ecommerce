@@ -46,6 +46,15 @@ export interface IShippingDetails {
   deliveredAt?: Date;
 }
 
+export interface IReturnedItem {
+  productId: mongoose.Types.ObjectId;
+  variantSku: string;
+  name: string;
+  image?: string;
+  price: number;
+  quantity: number;
+}
+
 export interface IOrder extends Document {
   orderNumber: string;
   user: mongoose.Types.ObjectId;
@@ -61,6 +70,8 @@ export interface IOrder extends Document {
   reservationExpiresAt?: Date;
   cancellationReason?: string;
   returnReason?: string;
+  returnedItems?: IReturnedItem[];
+  returnRestocked?: boolean;
   internalNotes?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -153,6 +164,17 @@ const OrderSchema = new Schema<IOrder>(
     reservationExpiresAt: { type: Date, index: true },
     cancellationReason: { type: String },
     returnReason: { type: String },
+    returnedItems: [
+      {
+        productId: { type: Schema.Types.ObjectId, ref: 'Product' },
+        variantSku: { type: String },
+        name: { type: String },
+        image: { type: String },
+        price: { type: Number },
+        quantity: { type: Number },
+      },
+    ],
+    returnRestocked: { type: Boolean, default: false },
     internalNotes: { type: String },
   },
   {

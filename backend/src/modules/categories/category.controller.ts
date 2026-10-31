@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from 'express';
-import { ConflictError, NotFoundError } from '../../utils/errors';
+import mongoose from 'mongoose';
+import { BadRequestError, ConflictError, NotFoundError } from '../../utils/errors';
 import { sendResponse } from '../../utils/response';
 import { Category } from './category.model';
 
@@ -72,18 +73,49 @@ export const createCategory = async (req: Request, res: Response, next: NextFunc
   try {
     const { name, slug, description, image, parentCategory, displayOrder, isActive } = req.body;
 
-    const normalizedSlug = (slug || name).toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const existing = await Category.findOne({ slug: normalizedSlug });
-    if (existing) {
-      throw new ConflictError('A category with this slug already exists');
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      throw new BadRequestError('Category name is required');
     }
 
+    let normalizedSlug = (slug || name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+
+    if (!normalizedSlug) {
+      normalizedSlug = `category-${Date.now().toString(36)}`;
+    }
+
+    const existing = await Category.findOne({ slug: normalizedSlug });
+    if (existing) {
+      const parentMatch =
+        (!existing.parentCategory && !parentCategory) ||
+        (existing.parentCategory &&
+          parentCategory &&
+          existing.parentCategory.toString() === parentCategory.toString());
+
+      if (parentMatch) {
+        return sendResponse({
+          res,
+          statusCode: 200,
+          message: 'Category already exists',
+          data: existing,
+        });
+      }
+      normalizedSlug = `${normalizedSlug}-${Date.now().toString(36).slice(-4)}`;
+    }
+
+    const resolvedParent =
+      parentCategory && mongoose.Types.ObjectId.isValid(parentCategory)
+        ? new mongoose.Types.ObjectId(parentCategory)
+        : null;
+
     const category = await Category.create({
-      name,
+      name: name.trim(),
       slug: normalizedSlug,
-      description,
+      description: description?.trim(),
       image,
-      parentCategory: parentCategory || null,
+      parentCategory: resolvedParent,
       displayOrder: displayOrder || 0,
       isActive: isActive !== undefined ? isActive : true,
     });
@@ -109,11 +141,16 @@ export const updateCategory = async (req: Request, res: Response, next: NextFunc
       throw new NotFoundError('Category not found');
     }
 
-    if (name) category.name = name;
-    if (slug) category.slug = slug.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+    if (name) category.name = name.trim();
+    if (slug) category.slug = slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     if (description !== undefined) category.description = description;
     if (image !== undefined) category.image = image;
-    if (parentCategory !== undefined) category.parentCategory = parentCategory || null;
+    if (parentCategory !== undefined) {
+      category.parentCategory =
+        parentCategory && mongoose.Types.ObjectId.isValid(parentCategory)
+          ? new mongoose.Types.ObjectId(parentCategory)
+          : null;
+    }
     if (displayOrder !== undefined) category.displayOrder = displayOrder;
     if (isActive !== undefined) category.isActive = isActive;
 
@@ -132,10 +169,14 @@ export const updateCategory = async (req: Request, res: Response, next: NextFunc
 export const deleteCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const category = await Category.findByIdAndDelete(id);
+    const category = await Category.findById(id);
     if (!category) {
       throw new NotFoundError('Category not found');
     }
+
+    // Also delete any subcategories attached to this parent category
+    await Category.deleteMany({ parentCategory: id });
+    await Category.findByIdAndDelete(id);
 
     return sendResponse({
       res,

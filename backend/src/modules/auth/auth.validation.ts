@@ -36,3 +36,24 @@ export const addressSchema = z.object({
     isDefault: z.boolean().optional(),
   }),
 });
+
+export const forgotPasswordSchema = z.object({
+  body: z.object({
+    email: z.string().email('Please provide a valid email address'),
+  }),
+});
+
+export const verifyOtpSchema = z.object({
+  body: z.object({
+    email: z.string().email('Please provide a valid email address'),
+    otp: z.string().length(6, 'Verification OTP must be 6 digits'),
+  }),
+});
+
+export const resetPasswordSchema = z.object({
+  body: z.object({
+    email: z.string().email('Please provide a valid email address'),
+    otp: z.string().length(6, 'Verification OTP must be 6 digits'),
+    newPassword: z.string().min(6, 'New password must be at least 6 characters long'),
+  }),
+});

@@ -9,6 +9,19 @@ export interface User {
   isActive: boolean;
   permissions?: string[];
   createdAt?: string;
+  addresses?: Array<{
+    _id: string;
+    fullName: string;
+    phone: string;
+    street?: string;
+    addressLine1?: string;
+    addressLine2?: string;
+    city: string;
+    state: string;
+    postalCode: string;
+    country: string;
+    isDefault: boolean;
+  }>;
 }
 
 export interface ProductVariant {
@@ -26,6 +39,7 @@ export interface Category {
   slug: string;
   description?: string;
   image?: string;
+  parentCategory?: string | { _id: string; name: string; slug: string } | null;
   displayOrder?: number;
   isActive: boolean;
 }
@@ -37,6 +51,7 @@ export interface Product {
   sku: string;
   description: string;
   category: Category | string;
+  subcategory?: Category | string | null;
   brand?: string;
   images: Array<string | { url: string; publicId?: string; alt?: string; isDefault?: boolean }>;
   sellingPrice: number;
@@ -106,10 +121,8 @@ export interface StoreSettings {
 export type OrderFulfillmentStatus =
   | 'PENDING_PAYMENT'
   | 'CONFIRMED'
-  | 'PROCESSING'
-  | 'PACKED'
-  | 'SHIPPED'
-  | 'OUT_FOR_DELIVERY'
+  | 'PACKING'
+  | 'SHIPPING'
   | 'DELIVERED'
   | 'CANCELLED';
 
@@ -160,11 +173,23 @@ export interface Order {
   paymentMethod: PaymentMethod;
   paymentStatus: PaymentStatus;
   fulfillmentStatus: OrderFulfillmentStatus;
+  returnStatus?: 'NOT_REQUESTED' | 'REQUESTED' | 'APPROVED' | 'REJECTED' | 'RECEIVED' | 'COMPLETED';
+  returnReason?: string;
+  returnedItems?: Array<{
+    productId: string;
+    variantSku: string;
+    name: string;
+    image?: string;
+    price: number;
+    quantity: number;
+  }>;
   shippingDetails?: {
     carrier?: string;
+    courierName?: string;
     trackingNumber?: string;
     trackingUrl?: string;
     estimatedDelivery?: string;
+    deliveredAt?: string;
   };
   createdAt: string;
   updatedAt: string;
@@ -211,5 +236,6 @@ export interface AuditLog {
   previousState?: any;
   newState?: any;
   ipAddress?: string;
-  timestamp: string;
+  timestamp?: string;
+  createdAt: string;
 }

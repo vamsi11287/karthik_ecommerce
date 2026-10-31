@@ -17,7 +17,6 @@ import CheckroomOutlinedIcon from '@mui/icons-material/CheckroomOutlined';
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
 import PaymentOutlinedIcon from '@mui/icons-material/PaymentOutlined';
 import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined';
-import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -62,22 +61,37 @@ export const AdminLayout: React.FC = () => {
     );
   }
 
-  const menuItems = [
-    { label: 'Overview', path: '/admin', icon: <DashboardOutlinedIcon /> },
-    { label: 'Products', path: '/admin/products', icon: <CheckroomOutlinedIcon /> },
-    { label: 'Orders & Fulfillment', path: '/admin/orders', icon: <LocalShippingOutlinedIcon /> },
-    { label: 'Payment & COD Settings', path: '/admin/settings', icon: <PaymentOutlinedIcon /> },
-    { label: 'Coupons & Promos', path: '/admin/coupons', icon: <ConfirmationNumberOutlinedIcon /> },
-    { label: 'Inventory Control', path: '/admin/inventory', icon: <Inventory2OutlinedIcon /> },
-    { label: 'Audit Trail', path: '/admin/audit-logs', icon: <HistoryOutlinedIcon /> },
+  const ALL_MENU_ITEMS = [
+    { label: 'Overview',             path: '/admin',           icon: <DashboardOutlinedIcon />,          permission: null },
+    { label: 'Products',             path: '/admin/products',  icon: <CheckroomOutlinedIcon />,          permission: 'products.read' },
+    { label: 'Orders & Fulfillment', path: '/admin/orders',    icon: <LocalShippingOutlinedIcon />,      permission: 'orders.read_all' },
+    { label: 'Payment & COD Settings', path: '/admin/settings', icon: <PaymentOutlinedIcon />,           permission: 'settings.payment_methods.manage' },
+    { label: 'Coupons & Promos',     path: '/admin/coupons',   icon: <ConfirmationNumberOutlinedIcon />, permission: 'coupons.manage' },
+    { label: 'Audit Trail',          path: '/admin/audit-logs', icon: <HistoryOutlinedIcon />,           permission: 'audit_logs.read' },
   ];
+
+  // Super admins see everything; regular admins see only their permitted pages
+  const menuItems = isSuperAdmin
+    ? ALL_MENU_ITEMS
+    : ALL_MENU_ITEMS.filter(
+        (item) => item.permission === null || (user?.permissions ?? []).includes(item.permission)
+      );
 
   const sidebarContent = (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', backgroundColor: '#121212', color: '#FFF' }}>
       {/* Brand Header */}
       <Box sx={{ p: 3, borderBottom: '1px solid #222222' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-          <Box sx={{ width: 14, height: 14, backgroundColor: '#FFF', transform: 'rotate(45deg)' }} />
+          <Box
+            component="img"
+            src="/logo.png"
+            alt="SPUN"
+            sx={{
+              height: 28,
+              filter: 'invert(1)',
+              objectFit: 'contain',
+            }}
+          />
           <Typography
             variant="h6"
             sx={{
@@ -87,7 +101,7 @@ export const AdminLayout: React.FC = () => {
               color: '#FFF',
             }}
           >
-            XIV ADMIN
+            ADMIN
           </Typography>
         </Box>
         <Chip
@@ -228,9 +242,21 @@ export const AdminLayout: React.FC = () => {
         <IconButton onClick={() => setMobileOpen(true)} sx={{ color: '#FFF' }}>
           <MenuIcon />
         </IconButton>
-        <Typography variant="subtitle1" sx={{ fontFamily: '"Syne", sans-serif', fontWeight: 800 }}>
-          XIV ADMIN
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box
+            component="img"
+            src="/logo.png"
+            alt="SPUN"
+            sx={{
+              height: 22,
+              filter: 'invert(1)',
+              objectFit: 'contain',
+            }}
+          />
+          <Typography variant="subtitle1" sx={{ fontFamily: '"Syne", sans-serif', fontWeight: 800 }}>
+            SPUN ADMIN
+          </Typography>
+        </Box>
         <Box
           component={Link}
           to="/"

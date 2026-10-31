@@ -12,6 +12,8 @@ export interface IUser extends Document {
   isActive: boolean;
   permissions: PermissionKey[];
   avatar?: string;
+  resetPasswordOtp?: string;
+  resetPasswordOtpExpires?: Date;
   addresses: Array<{
     _id: mongoose.Types.ObjectId;
     fullName: string;
@@ -69,6 +71,8 @@ const UserSchema = new Schema<IUser>(
       default: [],
     },
     avatar: { type: String },
+    resetPasswordOtp: { type: String },
+    resetPasswordOtpExpires: { type: Date },
     addresses: [AddressSchema],
   },
   {

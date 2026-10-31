@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -23,6 +23,7 @@ import { themeColors } from '../../theme/theme';
 import useAuth from '../../hooks/useAuth';
 import useCart from '../../hooks/useCart';
 import useWishlist from '../../hooks/useWishlist';
+import { storeApi } from '../../hooks/useApi';
 import { useAppDispatch } from '../../app/store';
 import { setMobileMenuOpen } from '../../app/uiSlice';
 
@@ -36,6 +37,25 @@ export const Navbar: React.FC = () => {
 
   const [searchVal, setSearchVal] = useState('');
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
+  const [navCategories, setNavCategories] = useState<Array<{ label: string; path: string }>>([]);
+
+  useEffect(() => {
+    storeApi
+      .getCategories()
+      .then((res) => {
+        const list = res.data?.data || res.data || [];
+        if (Array.isArray(list)) {
+          const parents = list.filter((c: any) => !c.parentCategory);
+          setNavCategories(
+            parents.map((c: any) => ({
+              label: c.name,
+              path: `/catalog?category=${encodeURIComponent(c.slug || c.name.toLowerCase())}`,
+            }))
+          );
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,9 +67,13 @@ export const Navbar: React.FC = () => {
   const navLinks = [
     { label: 'Home', path: '/' },
     { label: 'Collections', path: '/catalog' },
-    { label: 'New', path: '/catalog?sort=newest' },
-    { label: 'Men', path: '/catalog?category=men' },
-    { label: 'Women', path: '/catalog?category=women' },
+    ...(navCategories.length > 0
+      ? navCategories
+      : [
+          { label: 'Men', path: '/catalog?category=men' },
+          { label: 'Women', path: '/catalog?category=women' },
+          { label: 'Others', path: '/catalog?category=others' },
+        ]),
   ];
 
   return (
@@ -158,45 +182,29 @@ export const Navbar: React.FC = () => {
             </Box>
           </Box>
 
-          {/* Center: Brand Geometric Emblem Logo */}
+          {/* Center: Brand Logo */}
           <Box
             component={Link}
             to="/"
             sx={{
               display: 'flex',
-              flexDirection: 'column',
               alignItems: 'center',
               textDecoration: 'none',
               mx: 'auto',
             }}
           >
-            {/* Geometric Diamond Mark */}
             <Box
+              component="img"
+              src="/logo.png"
+              alt="SPUN"
               sx={{
-                width: 18,
-                height: 18,
-                backgroundColor: themeColors.black,
-                transform: 'rotate(45deg)',
-                mb: 0.3,
-                transition: 'transform 0.4s ease',
-                '&:hover': {
-                  transform: 'rotate(225deg)',
-                },
+                height: { xs: 30, sm: 36, md: 42 },
+                objectFit: 'contain',
+                display: 'block',
+                transition: 'opacity 0.2s ease',
+                '&:hover': { opacity: 0.8 },
               }}
             />
-            <Typography
-              variant="h6"
-              sx={{
-                fontFamily: '"Syne", sans-serif',
-                fontWeight: 800,
-                letterSpacing: '0.18em',
-                fontSize: { xs: '1rem', md: '1.15rem' },
-                color: themeColors.black,
-                lineHeight: 1,
-              }}
-            >
-              XIV QR
-            </Typography>
           </Box>
 
           {/* Right: Actions (Admin badge, Wishlist, Cart, Account) */}

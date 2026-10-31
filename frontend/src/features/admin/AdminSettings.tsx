@@ -98,7 +98,7 @@ export const AdminSettings: React.FC = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 880 }}>
+    <Box >
       {/* Header */}
       <Box sx={{ mb: 4, pb: 2, borderBottom: `1px solid ${themeColors.border}` }}>
         <Typography

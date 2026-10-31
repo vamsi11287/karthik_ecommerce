@@ -31,12 +31,6 @@ body::before {
   width: 100vw;
   height: 100vh;
   pointer-events: none;
-  z-index: 99999;
-  opacity: 0.055;
-  background-image: url('/textures/noise.png');
-  background-repeat: repeat;
-  background-size: 200px 200px;
-  mix-blend-mode: multiply;
 }
 
 /* Custom Scrollbar */
