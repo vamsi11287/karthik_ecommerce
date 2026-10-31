@@ -1,8 +1,7 @@
 import axios, { type AxiosError } from 'axios';
 
 // Base API URL targeting the backend server
-export const API_BASE_URL =
-  (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:5000/api/v1';
+export const API_BASE_URL = 'https://karthik-ecommerce.onrender.com/api/v1';
 
 // Generate or retrieve persistent guest session ID
 const getSessionId = (): string => {
